@@ -1,0 +1,2 @@
+Activate ENV : venv\Scripts\Activate.ps1
+Server run :- uvicorn .\fastapi_predict_trend_api:app --reload
