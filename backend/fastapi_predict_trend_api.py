@@ -6,6 +6,10 @@ import openai
 from pydantic import BaseModel
 from typing import List
 import os
+from dotenv import load_dotenv, dotenv_values
+
+load_dotenv()
+# print(config)
 
 app = FastAPI()
 
@@ -18,7 +22,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Set OpenAI API key if available
+api_key = os.getenv("OPENAI_API_KEY")
+if api_key:
+    openai.api_key = api_key
+    print("OpenAI API key loaded successfully")
+else:
+    print("Warning: OPENAI_API_KEY not set. AI summary feature will be disabled.")
 
 @app.get("/")
 def read_root():
@@ -51,6 +61,13 @@ class SummaryRequest(BaseModel):
 @app.post("/generate-summary")
 def generate_summary(req: SummaryRequest):
     try:
+        # Check if OpenAI API key is available
+        if not os.getenv("OPENAI_API_KEY"):
+            return {
+                "summary": "AI summary feature is currently disabled. Please set the OPENAI_API_KEY environment variable to enable AI-powered summaries.",
+                "status": "disabled"
+            }
+        
         data_preview = "\n".join([
             f"Date: {item.get('Date')}, Close: {item.get('Close')}"
             for item in req.stock_json
@@ -74,7 +91,7 @@ def generate_summary(req: SummaryRequest):
         )
 
         summary = response.choices[0].message.content.strip()
-        return {"summary": summary}
+        return {"summary": summary, "status": "success"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error generating summary: {str(e)}")
